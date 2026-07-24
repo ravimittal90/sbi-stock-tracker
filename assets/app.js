@@ -458,7 +458,6 @@ async function loadSbi() {
 function init() {
   populateCountries();
   populateQuickPick();
-  loadSbi();
   el("lookup-form").addEventListener("submit", onSubmit);
   el("sbi-pdf-form").addEventListener("submit", onSbiPdfSubmit);
 
@@ -469,6 +468,17 @@ function init() {
   });
   document.addEventListener("keydown", (ev) => {
     if (ev.key === "Escape") closePdf();
+  });
+
+  // Prefill a sensible default (Microsoft, previous calendar year) and run the
+  // lookup once SBI rate data is loaded so the INR conversion also shows.
+  const prevYear = new Date().getFullYear() - 1;
+  el("symbol").value = "MSFT";
+  el("quick-pick").value = "MSFT";
+  el("country").value = "US";
+  el("year").value = String(prevYear);
+  loadSbi().then(() => {
+    el("lookup-form").requestSubmit();
   });
 }
 
