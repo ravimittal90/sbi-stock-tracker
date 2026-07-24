@@ -45,7 +45,7 @@ body {
 }
 
 main {
-  max-width: 960px;
+  max-width: 1180px;
   margin: -1.6rem auto 3rem;
   padding: 0 1rem;
 }
@@ -59,14 +59,14 @@ main {
 
 .layout {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 22rem;
-  gap: 1.6rem;
+  grid-template-columns: minmax(0, 1fr) 19rem;
+  gap: 3rem;
   align-items: start;
   position: relative;
 }
 .layout > .col-side {
   border-left: 1px solid var(--border, rgba(0, 0, 0, 0.08));
-  padding-left: 1.6rem;
+  padding-left: 3rem;
 }
 .col-main,
 .col-side {
@@ -85,11 +85,12 @@ main {
   }
 }
 
-.sbi-card {
-  margin-top: 1.5rem;
+.col-main > .card:first-child {
+  border-top: 4px solid var(--accent);
+  box-shadow: 0 14px 40px rgba(37, 99, 235, 0.18);
 }
-.contact-card {
-  margin-top: 1.5rem;
+.col-side .card {
+  background: #fbfcfe;
 }
 .section-title {
   margin: 0 0 0.3rem;
@@ -264,7 +265,7 @@ button#go:disabled {
 
 .cards {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
 }
 
