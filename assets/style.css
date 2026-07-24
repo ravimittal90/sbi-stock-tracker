@@ -57,18 +57,31 @@ main {
   padding: 1.4rem;
 }
 
-.top-tools {
+.layout {
   display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 1.2rem;
+  grid-template-columns: minmax(0, 1fr) 22rem;
+  gap: 1.6rem;
   align-items: start;
+  position: relative;
 }
-.tool-pdf {
-  align-self: stretch;
+.layout > .col-side {
+  border-left: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  padding-left: 1.6rem;
 }
-@media (max-width: 760px) {
-  .top-tools {
+.col-main,
+.col-side {
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+  min-width: 0;
+}
+@media (max-width: 820px) {
+  .layout {
     grid-template-columns: 1fr;
+  }
+  .layout > .col-side {
+    border-left: none;
+    padding-left: 0;
   }
 }
 

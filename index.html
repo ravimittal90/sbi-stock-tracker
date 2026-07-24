@@ -32,14 +32,9 @@
       </p>
     </header>
 
-    <main>
-      <div class="top-tools">
-        <section class="card tool-stock" aria-label="Lookup form">
-          <h2 class="section-title">Stock value &amp; SBI TT rate</h2>
-          <p class="section-sub">
-            Peak, year-end and on-date share value with the matching SBI TT buy
-            rate and INR value.
-          </p>
+    <main class="layout">
+      <div class="col-main">
+        <section class="card" aria-label="Lookup form">
           <form id="lookup-form" autocomplete="off">
             <div class="grid">
               <label class="field field-wide">
@@ -100,7 +95,18 @@
           </form>
         </section>
 
-        <section class="card sbi-card tool-pdf" aria-label="SBI PDF by date">
+        <section id="status" class="status" role="status" aria-live="polite"></section>
+
+        <section id="results" class="results" hidden>
+          <h2 id="result-title"></h2>
+          <div class="cards" id="result-cards"></div>
+          <p class="note" id="currency-note"></p>
+          <div id="company-info" class="company-info" hidden></div>
+        </section>
+      </div>
+
+      <div class="col-side">
+        <section class="card sbi-card" aria-label="SBI PDF by date">
           <h2 class="section-title">SBI TT rate PDF for any date</h2>
           <p class="section-sub">
             Pick any date to view or download the official SBI FOREX CARD RATES
@@ -126,40 +132,31 @@
           </form>
           <p id="sbi-pdf-status" class="status" role="status" aria-live="polite"></p>
         </section>
+
+        <section class="card contact-card" aria-label="Contact and feedback">
+          <h2 class="section-title">Found it useful, or have feedback?</h2>
+          <p class="section-sub">
+            I'd love to hear from you — suggestions, bugs, or a new stock you'd
+            like added. Write a quick note below and it'll open in your email app,
+            or just reach me at
+            <a href="mailto:ravi7680@gmail.com">ravi7680@gmail.com</a>.
+          </p>
+          <form id="feedback-form" autocomplete="off">
+            <div class="grid">
+              <label class="field field-wide">
+                <span>Your message</span>
+                <textarea
+                  id="fb-message"
+                  rows="3"
+                  maxlength="2000"
+                  placeholder="Type your feedback here…"
+                ></textarea>
+              </label>
+            </div>
+            <button type="submit" id="fb-send">Send via email</button>
+          </form>
+        </section>
       </div>
-
-      <section id="status" class="status" role="status" aria-live="polite"></section>
-
-      <section id="results" class="results" hidden>
-        <h2 id="result-title"></h2>
-        <div class="cards" id="result-cards"></div>
-        <p class="note" id="currency-note"></p>
-        <div id="company-info" class="company-info" hidden></div>
-      </section>
-
-      <section class="card contact-card" aria-label="Contact and feedback">
-        <h2 class="section-title">Found it useful, or have feedback?</h2>
-        <p class="section-sub">
-          I'd love to hear from you — suggestions, bugs, or a new stock you'd
-          like added. Write a quick note below and it'll open in your email app,
-          or just reach me at
-          <a href="mailto:ravi7680@gmail.com">ravi7680@gmail.com</a>.
-        </p>
-        <form id="feedback-form" autocomplete="off">
-          <div class="grid">
-            <label class="field field-wide">
-              <span>Your message</span>
-              <textarea
-                id="fb-message"
-                rows="3"
-                maxlength="2000"
-                placeholder="Type your feedback here…"
-              ></textarea>
-            </label>
-          </div>
-          <button type="submit" id="fb-send">Send via email</button>
-        </form>
-      </section>
     </main>
 
     <div id="pdf-modal" class="modal" hidden>
