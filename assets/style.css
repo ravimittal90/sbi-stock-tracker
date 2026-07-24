@@ -299,6 +299,60 @@ button#go:disabled {
   color: var(--muted);
 }
 
+.company-info {
+  margin: 1.2rem 0 0;
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.2rem 1.3rem;
+  border-left: 4px solid var(--accent);
+}
+.company-info h3 {
+  margin: 0 0 0.8rem;
+  font-size: 1.05rem;
+}
+.company-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.company-row {
+  display: grid;
+  grid-template-columns: 170px 1fr;
+  gap: 0.6rem;
+}
+.company-k {
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.company-v {
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+.company-v a {
+  color: var(--accent);
+  word-break: break-all;
+}
+.fa-note {
+  margin: 1rem 0 0;
+  padding: 0.7rem 0.9rem;
+  background: #eff6ff;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: #1e3a8a;
+}
+@media (max-width: 480px) {
+  .company-row {
+    grid-template-columns: 1fr;
+    gap: 0.15rem;
+  }
+}
+
 footer {
   text-align: center;
   padding: 1.5rem 1rem 2.5rem;

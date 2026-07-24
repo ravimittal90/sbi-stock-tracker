@@ -147,6 +147,33 @@ async function fetchSeries(symbol, year, onDate) {
   return { meta, rows };
 }
 
+// Fetch the company profile (registered address + business nature). Best-effort:
+// resolves to null on any failure so the price results still render.
+async function fetchProfile(symbol) {
+  try {
+    const base = (CFG.PROXY_URL || "").replace(/\/$/, "");
+    const resp = await fetch(
+      `${base}/?symbol=${encodeURIComponent(symbol)}&profile=1`,
+      { headers: { Accept: "application/json" } }
+    );
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    return data && data.profile ? data.profile : null;
+  } catch {
+    return null;
+  }
+}
+
+function formatAddress(p) {
+  const parts = [];
+  if (p.address1) parts.push(p.address1);
+  if (p.address2) parts.push(p.address2);
+  const cityLine = [p.city, p.state, p.zip].filter(Boolean).join(" ");
+  if (cityLine) parts.push(cityLine);
+  if (p.country) parts.push(p.country);
+  return parts.join(", ");
+}
+
 // London stocks quote in pence (GBp). Normalise to GBP for display + SBI.
 function normaliseCurrency(meta) {
   let ccy = meta.currency || "USD";
@@ -294,6 +321,66 @@ function render(symbol, ccy, factor, series, year, onDate) {
   results.hidden = false;
 }
 
+// Render the company profile card (for ITR Schedule FA: name, registered
+// address, nature of business). Clears itself while a fresh lookup is pending.
+function renderProfile(profile) {
+  const box = el("company-info");
+  box.textContent = "";
+  if (!profile) {
+    box.hidden = true;
+    return;
+  }
+
+  const h3 = document.createElement("h3");
+  h3.textContent = profile.name || "Company details";
+  box.appendChild(h3);
+
+  const grid = document.createElement("div");
+  grid.className = "company-grid";
+
+  const addRow = (label, value, isLink) => {
+    if (!value) return;
+    const row = document.createElement("div");
+    row.className = "company-row";
+    const k = document.createElement("span");
+    k.className = "company-k";
+    k.textContent = label;
+    const v = document.createElement("span");
+    v.className = "company-v";
+    if (isLink) {
+      const a = document.createElement("a");
+      a.href = value;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.textContent = value;
+      v.appendChild(a);
+    } else {
+      v.textContent = value;
+    }
+    row.appendChild(k);
+    row.appendChild(v);
+    grid.appendChild(row);
+  };
+
+  addRow("Registered address", formatAddress(profile));
+  const business = [profile.sector, profile.industry].filter(Boolean).join(" · ");
+  addRow("Nature of business", business);
+  addRow("Website", profile.website, true);
+  box.appendChild(grid);
+
+  // Schedule FA helper (RSU/ESPP guidance).
+  const fa = document.createElement("p");
+  fa.className = "fa-note";
+  fa.textContent =
+    "Schedule FA (ITR) tip: for vested RSUs/ESPP of a listed foreign company, " +
+    "the “Nature of entity” is usually “Listed Equity Shares — Foreign”. Use the " +
+    "registered address above for the entity address, and the SBI TT buy rate " +
+    "for INR conversion. This is general information, not tax advice.";
+  box.appendChild(fa);
+
+  box.hidden = false;
+}
+
 // --- form handling ---------------------------------------------------------
 async function onSubmit(ev) {
   ev.preventDefault();
@@ -316,12 +403,17 @@ async function onSubmit(ev) {
 
   el("go").disabled = true;
   el("results").hidden = true;
+  el("company-info").hidden = true;
   setStatus("Fetching prices…");
   try {
-    const series = await fetchSeries(symbol, year, onDate);
+    const [series, profile] = await Promise.all([
+      fetchSeries(symbol, year, onDate),
+      fetchProfile(symbol),
+    ]);
     const { ccy, factor } = normaliseCurrency(series.meta);
     setStatus(`Loaded ${series.rows.length} trading days.`);
     render(symbol, ccy, factor, series, year, onDate);
+    renderProfile(profile);
   } catch (err) {
     setStatus(err.message || "Something went wrong.", true);
   } finally {

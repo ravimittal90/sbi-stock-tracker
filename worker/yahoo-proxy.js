@@ -17,12 +17,89 @@
  */
 
 const YAHOO_HOST = "https://query1.finance.yahoo.com/v8/finance/chart/";
+const YAHOO_QS = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/";
+const YAHOO_UA =
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+  "(KHTML, like Gecko) Chrome/120.0 Safari/537.36";
 
 // Set to your site origin(s). "*" is acceptable for a public read-only proxy.
 const ALLOWED_ORIGINS = ["*"];
 
 const SYMBOL_RE = /^[A-Za-z0-9.\-^=]{1,20}$/;
 const INTERVALS = new Set(["1d", "1wk", "1mo"]);
+
+// Cached Yahoo crumb+cookie (module scope; refreshed periodically).
+let CRUMB_CACHE = { cookie: "", crumb: "", ts: 0 };
+const CRUMB_TTL_MS = 30 * 60 * 1000;
+
+async function getCrumb(force) {
+  const now = Date.now();
+  if (!force && CRUMB_CACHE.crumb && now - CRUMB_CACHE.ts < CRUMB_TTL_MS) {
+    return CRUMB_CACHE;
+  }
+  // 1) Obtain a session cookie.
+  const cookieResp = await fetch("https://fc.yahoo.com", {
+    headers: { "User-Agent": YAHOO_UA },
+  });
+  let cookie = "";
+  const setCookie =
+    (cookieResp.headers.getSetCookie && cookieResp.headers.getSetCookie()[0]) ||
+    cookieResp.headers.get("set-cookie") ||
+    "";
+  if (setCookie) cookie = setCookie.split(";")[0];
+
+  // 2) Exchange the cookie for a crumb.
+  const crumbResp = await fetch(
+    "https://query2.finance.yahoo.com/v1/test/getcrumb",
+    { headers: { "User-Agent": YAHOO_UA, Cookie: cookie } }
+  );
+  const crumb = (await crumbResp.text()).trim();
+  CRUMB_CACHE = { cookie, crumb, ts: now };
+  return CRUMB_CACHE;
+}
+
+// Fetch and slim down the company profile (address + business nature).
+async function handleProfile(symbol, origin) {
+  async function attempt(force) {
+    const { cookie, crumb } = await getCrumb(force);
+    const url =
+      `${YAHOO_QS}${encodeURIComponent(symbol)}` +
+      `?modules=assetProfile%2Cprice&crumb=${encodeURIComponent(crumb)}`;
+    return fetch(url, {
+      headers: { "User-Agent": YAHOO_UA, Cookie: cookie, Accept: "application/json" },
+    });
+  }
+
+  let resp = await attempt(false);
+  if (resp.status === 401 || resp.status === 403) {
+    resp = await attempt(true); // stale crumb -> refresh once
+  }
+  if (!resp.ok) {
+    return json({ error: `Profile upstream ${resp.status}` }, 502, origin);
+  }
+  const data = await resp.json();
+  const res =
+    data && data.quoteSummary && data.quoteSummary.result &&
+    data.quoteSummary.result[0];
+  if (!res) return json({ error: "No profile data" }, 404, origin);
+
+  const ap = res.assetProfile || {};
+  const pr = res.price || {};
+  const slim = {
+    name: (pr.longName || pr.shortName || symbol) + "",
+    address1: ap.address1 || "",
+    address2: ap.address2 || "",
+    city: ap.city || "",
+    state: ap.state || "",
+    zip: ap.zip || "",
+    country: ap.country || "",
+    sector: ap.sector || "",
+    industry: ap.industry || "",
+    website: ap.website || "",
+    summary: ap.longBusinessSummary || "",
+  };
+  return json({ profile: slim }, 200, origin);
+}
 
 function corsHeaders(origin) {
   const allow =
@@ -127,6 +204,11 @@ export default {
     const symbol = (url.searchParams.get("symbol") || "").trim();
     if (!SYMBOL_RE.test(symbol)) {
       return json({ error: "Invalid symbol" }, 400, origin);
+    }
+
+    // --- Company profile: registered address + business nature. ---
+    if (url.searchParams.get("profile") === "1") {
+      return handleProfile(symbol, origin);
     }
 
     const p1 = url.searchParams.get("period1");
