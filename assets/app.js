@@ -65,15 +65,37 @@ function sbiOnOrBefore(dateStr, ccy) {
 }
 
 // --- Yahoo proxy fetch -----------------------------------------------------
-async function fetchSeries(symbol) {
+// Fetch DAILY data for a bounded window. A bounded period1/period2 is required:
+// with range=max Yahoo silently returns 3-month bars, breaking every date/price.
+async function fetchSeries(symbol, year, onDate) {
   if (!CFG.PROXY_URL || CFG.PROXY_URL.includes("example.workers.dev")) {
     throw new Error(
       "Price proxy not configured. Set PROXY_URL in assets/config.js."
     );
   }
+
+  // Determine the date window we need (UTC), padded so nearest-prior-trading-day
+  // lookups near Jan 1 / the chosen date still have earlier rows to fall back to.
+  const DAY = 86400;
+  const needStarts = [];
+  const needEnds = [];
+  if (year) {
+    needStarts.push(Date.UTC(year, 0, 1) / 1000);
+    needEnds.push(Date.UTC(year, 11, 31) / 1000);
+  }
+  if (onDate) {
+    const t = Date.parse(onDate + "T00:00:00Z") / 1000;
+    needStarts.push(t);
+    needEnds.push(t);
+  }
+  const nowSec = Math.floor(Date.now() / 1000);
+  let period1 = Math.floor(Math.min(...needStarts) - 10 * DAY);
+  let period2 = Math.floor(Math.min(Math.max(...needEnds) + 5 * DAY, nowSec + DAY));
+  if (period1 < 0) period1 = 0;
+
   const url = `${CFG.PROXY_URL.replace(/\/$/, "")}/?symbol=${encodeURIComponent(
     symbol
-  )}&interval=1d`;
+  )}&interval=1d&period1=${period1}&period2=${period2}`;
   const resp = await fetch(url, { headers: { Accept: "application/json" } });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
@@ -267,7 +289,7 @@ async function onSubmit(ev) {
   el("results").hidden = true;
   setStatus("Fetching prices…");
   try {
-    const series = await fetchSeries(symbol);
+    const series = await fetchSeries(symbol, year, onDate);
     const { ccy, factor } = normaliseCurrency(series.meta);
     setStatus(`Loaded ${series.rows.length} trading days.`);
     render(symbol, ccy, factor, series, year, onDate);
@@ -281,6 +303,10 @@ async function onSubmit(ev) {
 // --- init ------------------------------------------------------------------
 function populateCountries() {
   const sel = el("country");
+  const blank = document.createElement("option");
+  blank.value = "";
+  blank.textContent = "— optional —";
+  sel.appendChild(blank);
   const map = window.COUNTRY_CURRENCY || {};
   Object.keys(map).forEach((code) => {
     const opt = document.createElement("option");

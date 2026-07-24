@@ -75,6 +75,26 @@ main {
   font-weight: 600;
 }
 
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.hint {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-weight: 400;
+  line-height: 1.5;
+}
+.hint code {
+  background: #f1f5f9;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+.hint a {
+  color: var(--accent);
+}
+
 select,
 input {
   font-size: 1rem;

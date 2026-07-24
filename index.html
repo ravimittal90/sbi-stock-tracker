@@ -35,29 +35,41 @@
       <section class="card" aria-label="Lookup form">
         <form id="lookup-form" autocomplete="off">
           <div class="grid">
-            <label class="field">
-              <span>Quick pick</span>
-              <select id="quick-pick">
-                <option value="">— choose a common stock —</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Country / Exchange</span>
-              <select id="country" required></select>
-            </label>
-
-            <label class="field">
-              <span>Stock symbol (Yahoo)</span>
+            <label class="field field-wide">
+              <span>Stock symbol (type any Yahoo Finance symbol)</span>
               <input
                 id="symbol"
                 type="text"
                 inputmode="text"
                 maxlength="20"
-                placeholder="e.g. MSFT, 7203.T, SAP.DE"
+                placeholder="e.g. MSFT, 7203.T, SAP.DE, CBA.AX"
                 pattern="[A-Za-z0-9.\-\^=]{1,20}"
                 required
               />
+              <small class="hint"
+                >Any exchange works. Non-US needs a suffix: London
+                <code>.L</code>, Frankfurt <code>.DE</code>, Paris
+                <code>.PA</code>, Australia <code>.AX</code>, Tokyo
+                <code>.T</code>. Not sure? Look it up on
+                <a
+                  href="https://finance.yahoo.com/lookup"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  >Yahoo Finance</a
+                >.</small
+              >
+            </label>
+
+            <label class="field">
+              <span>…or quick-pick a common stock</span>
+              <select id="quick-pick">
+                <option value="">— choose from the list —</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Country / Exchange (optional)</span>
+              <select id="country"></select>
             </label>
 
             <label class="field">
