@@ -124,6 +124,28 @@ function json(body, status, origin) {
   });
 }
 
+// Edge-cache successful JSON responses keyed by the incoming request URL, so a
+// burst of identical lookups (e.g. 500 users all querying MSFT) results in just
+// ONE upstream Yahoo call per TTL instead of 500. CORS is "*" so a single cached
+// entry is valid for every origin.
+async function cached(request, ctx, producer) {
+  const cache = caches.default;
+  const key = new Request(new URL(request.url).toString(), { method: "GET" });
+  const hit = await cache.match(key);
+  if (hit) {
+    const h = new Headers(hit.headers);
+    h.set("X-Cache", "HIT");
+    return new Response(hit.body, { status: hit.status, headers: h });
+  }
+  const resp = await producer();
+  if (resp.status === 200 && ctx && ctx.waitUntil) {
+    ctx.waitUntil(cache.put(key, resp.clone()));
+  }
+  const h = new Headers(resp.headers);
+  h.set("X-Cache", "MISS");
+  return new Response(resp.body, { status: resp.status, headers: h });
+}
+
 // Only these hosts may be proxied as PDFs, and only .pdf paths. This keeps the
 // endpoint from becoming an open proxy / SSRF vector.
 const PDF_HOSTS = new Set([
@@ -180,8 +202,51 @@ async function handlePdf(pdfParam, origin, download, dlName) {
   });
 }
 
+async function handleChart(url, symbol, origin) {
+  const p1 = url.searchParams.get("period1");
+  const p2 = url.searchParams.get("period2");
+  const interval = url.searchParams.get("interval") || "1d";
+  if (!INTERVALS.has(interval)) {
+    return json({ error: "Invalid interval" }, 400, origin);
+  }
+
+  const qs = new URLSearchParams({ interval, events: "div,splits" });
+  if (p1 && p2) {
+    if (!/^\d{1,15}$/.test(p1) || !/^\d{1,15}$/.test(p2)) {
+      return json({ error: "Invalid period" }, 400, origin);
+    }
+    qs.set("period1", p1);
+    qs.set("period2", p2);
+  } else {
+    qs.set("range", "max");
+  }
+
+  const target = `${YAHOO_HOST}${encodeURIComponent(symbol)}?${qs}`;
+
+  const upstream = await fetch(target, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      Accept: "application/json",
+    },
+    cf: { cacheTtl: 3600, cacheEverything: true },
+  });
+
+  if (!upstream.ok) {
+    return json(
+      { error: `Upstream ${upstream.status}` },
+      upstream.status === 404 ? 404 : 502,
+      origin
+    );
+  }
+
+  const data = await upstream.json();
+  return json(data, 200, origin);
+}
+
 export default {
-  async fetch(request) {
+  async fetch(request, env, ctx) {
     const origin = request.headers.get("Origin") || "";
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders(origin) });
@@ -208,48 +273,10 @@ export default {
 
     // --- Company profile: registered address + business nature. ---
     if (url.searchParams.get("profile") === "1") {
-      return handleProfile(symbol, origin);
+      return cached(request, ctx, () => handleProfile(symbol, origin));
     }
 
-    const p1 = url.searchParams.get("period1");
-    const p2 = url.searchParams.get("period2");
-    const interval = url.searchParams.get("interval") || "1d";
-    if (!INTERVALS.has(interval)) {
-      return json({ error: "Invalid interval" }, 400, origin);
-    }
-
-    const qs = new URLSearchParams({ interval, events: "div,splits" });
-    if (p1 && p2) {
-      if (!/^\d{1,15}$/.test(p1) || !/^\d{1,15}$/.test(p2)) {
-        return json({ error: "Invalid period" }, 400, origin);
-      }
-      qs.set("period1", p1);
-      qs.set("period2", p2);
-    } else {
-      qs.set("range", "max");
-    }
-
-    const target = `${YAHOO_HOST}${encodeURIComponent(symbol)}?${qs}`;
-
-    const upstream = await fetch(target, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
-          "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
-        Accept: "application/json",
-      },
-      cf: { cacheTtl: 3600, cacheEverything: true },
-    });
-
-    if (!upstream.ok) {
-      return json(
-        { error: `Upstream ${upstream.status}` },
-        upstream.status === 404 ? 404 : 502,
-        origin
-      );
-    }
-
-    const data = await upstream.json();
-    return json(data, 200, origin);
+    // --- Historical price series. ---
+    return cached(request, ctx, () => handleChart(url, symbol, origin));
   },
 };

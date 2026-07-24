@@ -92,6 +92,36 @@ function sbiOnOrBefore(dateStr, ccy) {
 // --- Yahoo proxy fetch -----------------------------------------------------
 // Fetch DAILY data for a bounded window. A bounded period1/period2 is required:
 // with range=max Yahoo silently returns 3-month bars, breaking every date/price.
+// Fetch with exponential backoff + jitter. Retries on transient upstream errors
+// (429 rate-limit, 502/503/504) and network failures, so short Yahoo throttling
+// during traffic bursts recovers automatically instead of failing the lookup.
+const RETRY_STATUSES = new Set([429, 502, 503, 504]);
+async function fetchWithRetry(url, opts, tries = 3) {
+  let lastErr;
+  for (let attempt = 0; attempt < tries; attempt++) {
+    if (attempt > 0) {
+      const base = 400 * 2 ** (attempt - 1); // 400ms, 800ms, ...
+      const wait = base + Math.floor(Math.random() * 250); // jitter
+      await new Promise((r) => setTimeout(r, wait));
+    }
+    try {
+      const resp = await fetch(url, opts);
+      if (RETRY_STATUSES.has(resp.status) && attempt < tries - 1) {
+        lastErr = new Error(
+          resp.status === 429
+            ? "Data provider is busy (rate-limited). Retrying…"
+            : `Upstream ${resp.status}. Retrying…`
+        );
+        continue;
+      }
+      return resp;
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error("Network error.");
+}
+
 async function fetchSeries(symbol, year, onDate) {
   if (!CFG.PROXY_URL || CFG.PROXY_URL.includes("example.workers.dev")) {
     throw new Error(
@@ -121,9 +151,14 @@ async function fetchSeries(symbol, year, onDate) {
   const url = `${CFG.PROXY_URL.replace(/\/$/, "")}/?symbol=${encodeURIComponent(
     symbol
   )}&interval=1d&period1=${period1}&period2=${period2}`;
-  const resp = await fetch(url, { headers: { Accept: "application/json" } });
+  const resp = await fetchWithRetry(url, { headers: { Accept: "application/json" } });
   if (!resp.ok) {
     const body = await resp.json().catch(() => ({}));
+    if (resp.status === 429) {
+      throw new Error(
+        "The data provider is temporarily rate-limited. Please wait a few seconds and try again."
+      );
+    }
     throw new Error(body.error || `Lookup failed (${resp.status}).`);
   }
   const data = await resp.json();
@@ -152,7 +187,7 @@ async function fetchSeries(symbol, year, onDate) {
 async function fetchProfile(symbol) {
   try {
     const base = (CFG.PROXY_URL || "").replace(/\/$/, "");
-    const resp = await fetch(
+    const resp = await fetchWithRetry(
       `${base}/?symbol=${encodeURIComponent(symbol)}&profile=1`,
       { headers: { Accept: "application/json" } }
     );
