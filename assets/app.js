@@ -208,6 +208,10 @@ function metricCard(kind, title, priceObj, ccy) {
       a.target = "_blank";
       a.rel = "noopener noreferrer";
       a.textContent = `₹${sbi.rate} / ${ccy} (${sbi.date})`;
+      a.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        openPdf(sbi.pdf, sbi.date);
+      });
       rateLine.appendChild(a);
     } else {
       rateLine.appendChild(
@@ -300,6 +304,38 @@ async function onSubmit(ev) {
   }
 }
 
+// --- PDF viewer (in-page modal) --------------------------------------------
+// Local (same-origin) PDFs render inline directly. External SBI PDFs are
+// served by GitHub raw as octet-stream (forces download), so we route them
+// through the Worker which re-serves them as application/pdf.
+function pdfViewerSrc(pdf) {
+  if (/^https?:\/\//i.test(pdf)) {
+    const base = (CFG.PROXY_URL || "").replace(/\/$/, "");
+    return `${base}/?pdf=${encodeURIComponent(pdf)}`;
+  }
+  return pdf; // relative local path
+}
+
+function openPdf(pdf, date) {
+  const modal = el("pdf-modal");
+  const frame = el("pdf-frame");
+  const openTab = el("pdf-open-tab");
+  el("pdf-title").textContent = `SBI FOREX CARD RATES — ${date}`;
+  const src = pdfViewerSrc(pdf);
+  frame.src = src;
+  openTab.href = src;
+  modal.hidden = false;
+  document.body.style.overflow = "hidden";
+}
+
+function closePdf() {
+  const modal = el("pdf-modal");
+  if (modal.hidden) return;
+  modal.hidden = true;
+  el("pdf-frame").src = "about:blank";
+  document.body.style.overflow = "";
+}
+
 // --- init ------------------------------------------------------------------
 function populateCountries() {
   const sel = el("country");
@@ -349,6 +385,15 @@ function init() {
   populateQuickPick();
   loadSbi();
   el("lookup-form").addEventListener("submit", onSubmit);
+
+  // PDF modal close handlers.
+  el("pdf-close").addEventListener("click", closePdf);
+  el("pdf-modal").addEventListener("click", (ev) => {
+    if (ev.target.dataset.close) closePdf();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") closePdf();
+  });
 }
 
 document.addEventListener("DOMContentLoaded", init);

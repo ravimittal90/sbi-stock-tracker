@@ -15,6 +15,7 @@
                style-src 'self';
                script-src 'self';
                connect-src 'self' https://*.workers.dev;
+               frame-src 'self' https://*.workers.dev blob:;
                frame-ancestors 'none';"
     />
     <meta name="referrer" content="no-referrer" />
@@ -101,6 +102,22 @@
         <p class="note" id="currency-note"></p>
       </section>
     </main>
+
+    <div id="pdf-modal" class="modal" hidden>
+      <div class="modal-backdrop" data-close="1"></div>
+      <div class="modal-box" role="dialog" aria-modal="true" aria-label="SBI rate PDF">
+        <div class="modal-bar">
+          <span id="pdf-title">SBI FOREX CARD RATES</span>
+          <span class="modal-actions">
+            <a id="pdf-open-tab" href="#" target="_blank" rel="noopener noreferrer"
+              >Open in new tab ↗</a
+            >
+            <button type="button" id="pdf-close" aria-label="Close">✕</button>
+          </span>
+        </div>
+        <iframe id="pdf-frame" title="SBI rate PDF" src="about:blank"></iframe>
+      </div>
+    </div>
 
     <footer>
       <p>

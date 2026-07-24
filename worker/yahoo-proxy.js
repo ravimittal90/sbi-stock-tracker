@@ -47,6 +47,54 @@ function json(body, status, origin) {
   });
 }
 
+// Only these hosts may be proxied as PDFs, and only .pdf paths. This keeps the
+// endpoint from becoming an open proxy / SSRF vector.
+const PDF_HOSTS = new Set([
+  "raw.githubusercontent.com",
+  "sbi.bank.in",
+  "www.sbi.co.in",
+]);
+
+async function handlePdf(pdfParam, origin) {
+  let target;
+  try {
+    target = new URL(pdfParam);
+  } catch {
+    return json({ error: "Invalid pdf url" }, 400, origin);
+  }
+  if (
+    target.protocol !== "https:" ||
+    !PDF_HOSTS.has(target.hostname) ||
+    !target.pathname.toLowerCase().endsWith(".pdf")
+  ) {
+    return json({ error: "PDF source not allowed" }, 403, origin);
+  }
+
+  const upstream = await fetch(target.toString(), {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/120.0 Safari/537.36",
+      Accept: "application/pdf",
+    },
+    cf: { cacheTtl: 86400, cacheEverything: true },
+  });
+  if (!upstream.ok) {
+    return json({ error: `PDF upstream ${upstream.status}` }, 502, origin);
+  }
+
+  const allow = ALLOWED_ORIGINS.includes("*") ? "*" : origin;
+  return new Response(upstream.body, {
+    status: 200,
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": "inline",
+      "Access-Control-Allow-Origin": allow,
+      "Cache-Control": "public, max-age=86400",
+    },
+  });
+}
+
 export default {
   async fetch(request) {
     const origin = request.headers.get("Origin") || "";
@@ -58,6 +106,14 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // --- PDF proxy: re-serve whitelisted SBI PDFs as application/pdf so they
+    // render inline instead of downloading (GitHub raw sends octet-stream). ---
+    const pdfParam = url.searchParams.get("pdf");
+    if (pdfParam) {
+      return handlePdf(pdfParam, origin);
+    }
+
     const symbol = (url.searchParams.get("symbol") || "").trim();
     if (!SYMBOL_RE.test(symbol)) {
       return json({ error: "Invalid symbol" }, 400, origin);
