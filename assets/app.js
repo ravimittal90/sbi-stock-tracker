@@ -314,7 +314,17 @@ function valueOnDate(rows, dateStr, factor) {
 }
 
 // --- rendering -------------------------------------------------------------
-function metricCard(kind, title, priceObj, ccy) {
+function yahooHistoryUrl(symbol, dateStr) {
+  const base = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/history`;
+  const t = Date.parse(dateStr + "T00:00:00Z");
+  if (Number.isNaN(t)) return base;
+  const sec = Math.floor(t / 1000);
+  const p1 = sec - 4 * 86400;
+  const p2 = sec + 4 * 86400;
+  return `${base}?period1=${p1}&period2=${p2}`;
+}
+
+function metricCard(kind, title, priceObj, ccy, symbol) {
   const card = document.createElement("div");
   card.className = `metric ${kind}`;
 
@@ -372,6 +382,17 @@ function metricCard(kind, title, priceObj, ccy) {
     rateLine.textContent = `No SBI TT rate for ${ccy} near this date.`;
     card.appendChild(rateLine);
   }
+
+  // Let the user cross-check the share price on Yahoo Finance for that date.
+  if (symbol) {
+    const verify = document.createElement("a");
+    verify.className = "verify-link";
+    verify.href = yahooHistoryUrl(symbol, priceObj.date);
+    verify.target = "_blank";
+    verify.rel = "noopener noreferrer";
+    verify.textContent = "Verify on Yahoo ↗";
+    card.appendChild(verify);
+  }
   return card;
 }
 
@@ -383,14 +404,15 @@ function render(symbol, ccy, factor, series, year, onDate) {
 
   if (year) {
     cards.appendChild(
-      metricCard("peak", `Peak in ${year}`, peakForYear(series.rows, year, factor), ccy)
+      metricCard("peak", `Peak in ${year}`, peakForYear(series.rows, year, factor), ccy, symbol)
     );
     cards.appendChild(
       metricCard(
         "close",
         `Year-end close ${year}`,
         closingForYear(series.rows, year, factor),
-        ccy
+        ccy,
+        symbol
       )
     );
   }
@@ -400,7 +422,8 @@ function render(symbol, ccy, factor, series, year, onDate) {
         "ondate",
         `Value on ${onDate}`,
         valueOnDate(series.rows, onDate, factor),
-        ccy
+        ccy,
+        symbol
       )
     );
   }

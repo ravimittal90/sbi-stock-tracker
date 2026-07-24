@@ -363,6 +363,17 @@ button#go:disabled {
 .metric a:hover {
   border-bottom-style: solid;
 }
+.metric a.verify-link {
+  display: inline-block;
+  margin-top: 0.7rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-bottom: none;
+  color: var(--muted);
+}
+.metric a.verify-link:hover {
+  color: var(--accent);
+}
 
 .note {
   margin: 1.2rem 0.2rem 0;
