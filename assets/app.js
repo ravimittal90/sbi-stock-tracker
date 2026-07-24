@@ -411,6 +411,20 @@ function onSbiPdfSubmit(ev) {
   openPdf(hit.pdf, hit.date);
 }
 
+// --- Feedback: open the visitor's email app with a prefilled message -------
+// Fully dependency-free: no backend, no third-party mail service. Just a
+// mailto: link with the message pre-filled as the body.
+function onFeedbackSubmit(ev) {
+  ev.preventDefault();
+  const msg = el("fb-message").value.trim();
+  const subject = "SBI TT & Stock Tracker — feedback";
+  const body = msg || "";
+  const href = `mailto:ravi7680@gmail.com?subject=${encodeURIComponent(
+    subject
+  )}&body=${encodeURIComponent(body)}`;
+  window.location.href = href;
+}
+
 // --- init ------------------------------------------------------------------
 function populateCountries() {
   const sel = el("country");
@@ -460,6 +474,7 @@ function init() {
   populateQuickPick();
   el("lookup-form").addEventListener("submit", onSubmit);
   el("sbi-pdf-form").addEventListener("submit", onSbiPdfSubmit);
+  el("feedback-form").addEventListener("submit", onFeedbackSubmit);
 
   // PDF modal close handlers.
   el("pdf-close").addEventListener("click", closePdf);

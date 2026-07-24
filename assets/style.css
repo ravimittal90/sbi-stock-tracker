@@ -60,9 +60,45 @@ main {
 .sbi-card {
   margin-top: 1.5rem;
 }
+.contact-card {
+  margin-top: 1.5rem;
+}
 .section-title {
   margin: 0 0 0.3rem;
   font-size: 1.15rem;
+}
+textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.6rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--ink);
+  resize: vertical;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+#fb-send {
+  margin-top: 1rem;
+  padding: 0.7rem 1.4rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+}
+#fb-send:hover {
+  opacity: 0.94;
+}
+.contact-card a {
+  color: var(--accent);
 }
 .section-sub {
   margin: 0 0 1rem;
