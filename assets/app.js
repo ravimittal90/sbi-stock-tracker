@@ -710,6 +710,7 @@ function setupAutocomplete() {
     if (!it) return;
     input.value = it.symbol;
     input.dataset.resolved = it.symbol;
+    el("quick-pick").value = ""; // typed/searched stock ≠ a quick-pick entry
     close();
   };
 
@@ -772,6 +773,7 @@ function setupAutocomplete() {
 
   input.addEventListener("input", () => {
     input.dataset.resolved = ""; // typing invalidates a prior pick
+    el("quick-pick").value = ""; // clear the common-stock selection to avoid confusion
     const q = input.value.trim();
     lastQuery = q;
     if (timer) clearTimeout(timer);

@@ -262,6 +262,13 @@ input:focus {
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
 }
 
+/* Grey out the quick-pick when no common stock is selected (placeholder active)
+   so it doesn't look like it applies to a manually typed/searched symbol. */
+#quick-pick:has(option[value=""]:checked) {
+  color: var(--muted);
+  background: #f8fafc;
+}
+
 button#go {
   margin-top: 1.2rem;
   width: 100%;
