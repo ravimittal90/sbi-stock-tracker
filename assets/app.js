@@ -314,14 +314,10 @@ function valueOnDate(rows, dateStr, factor) {
 }
 
 // --- rendering -------------------------------------------------------------
-function yahooHistoryUrl(symbol, dateStr) {
-  const base = `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/history`;
-  const t = Date.parse(dateStr + "T00:00:00Z");
-  if (Number.isNaN(t)) return base;
-  const sec = Math.floor(t / 1000);
-  const p1 = sec - 4 * 86400;
-  const p2 = sec + 4 * 86400;
-  return `${base}?period1=${p1}&period2=${p2}`;
+function yahooHistoryUrl(symbol) {
+  // Yahoo's history page no longer accepts period1/period2 query params (its SPA
+  // 404s on them); the canonical history path is the reliable link.
+  return `https://finance.yahoo.com/quote/${encodeURIComponent(symbol)}/history`;
 }
 
 function metricCard(kind, title, priceObj, ccy, symbol) {
@@ -387,7 +383,7 @@ function metricCard(kind, title, priceObj, ccy, symbol) {
   if (symbol) {
     const verify = document.createElement("a");
     verify.className = "verify-link";
-    verify.href = yahooHistoryUrl(symbol, priceObj.date);
+    verify.href = yahooHistoryUrl(symbol);
     verify.target = "_blank";
     verify.rel = "noopener noreferrer";
     verify.textContent = "Verify on Yahoo ↗";
