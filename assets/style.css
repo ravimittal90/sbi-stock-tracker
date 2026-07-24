@@ -57,6 +57,21 @@ main {
   padding: 1.4rem;
 }
 
+.top-tools {
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 1.2rem;
+  align-items: start;
+}
+.tool-pdf {
+  align-self: stretch;
+}
+@media (max-width: 760px) {
+  .top-tools {
+    grid-template-columns: 1fr;
+  }
+}
+
 .sbi-card {
   margin-top: 1.5rem;
 }

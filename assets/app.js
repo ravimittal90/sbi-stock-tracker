@@ -164,6 +164,49 @@ async function fetchProfile(symbol) {
   }
 }
 
+// ITR Schedule FA uses the ISD dialling code as the "Country Code".
+// Yahoo returns the full country name, so map name -> { iso2, isd }.
+const COUNTRY_CODES = {
+  "United States": { iso2: "US", isd: "1" },
+  "United States of America": { iso2: "US", isd: "1" },
+  Canada: { iso2: "CA", isd: "1" },
+  "United Kingdom": { iso2: "GB", isd: "44" },
+  Ireland: { iso2: "IE", isd: "353" },
+  Germany: { iso2: "DE", isd: "49" },
+  France: { iso2: "FR", isd: "33" },
+  Netherlands: { iso2: "NL", isd: "31" },
+  Switzerland: { iso2: "CH", isd: "41" },
+  Spain: { iso2: "ES", isd: "34" },
+  Italy: { iso2: "IT", isd: "39" },
+  Sweden: { iso2: "SE", isd: "46" },
+  Denmark: { iso2: "DK", isd: "45" },
+  Norway: { iso2: "NO", isd: "47" },
+  Finland: { iso2: "FI", isd: "358" },
+  Belgium: { iso2: "BE", isd: "32" },
+  Luxembourg: { iso2: "LU", isd: "352" },
+  Austria: { iso2: "AT", isd: "43" },
+  Portugal: { iso2: "PT", isd: "351" },
+  Australia: { iso2: "AU", isd: "61" },
+  "New Zealand": { iso2: "NZ", isd: "64" },
+  Japan: { iso2: "JP", isd: "81" },
+  China: { iso2: "CN", isd: "86" },
+  "Hong Kong": { iso2: "HK", isd: "852" },
+  Singapore: { iso2: "SG", isd: "65" },
+  "South Korea": { iso2: "KR", isd: "82" },
+  Taiwan: { iso2: "TW", isd: "886" },
+  India: { iso2: "IN", isd: "91" },
+  Israel: { iso2: "IL", isd: "972" },
+  Brazil: { iso2: "BR", isd: "55" },
+  "South Africa": { iso2: "ZA", isd: "27" },
+};
+
+function countryCodeInfo(name) {
+  if (!name) return null;
+  const c = COUNTRY_CODES[name.trim()];
+  if (!c) return null;
+  return `${name} — ${c.isd} (ISO ${c.iso2})`;
+}
+
 function formatAddress(p) {
   const parts = [];
   if (p.address1) parts.push(p.address1);
@@ -363,6 +406,8 @@ function renderProfile(profile) {
   };
 
   addRow("Registered address", formatAddress(profile));
+  addRow("ZIP / Postal code", profile.zip);
+  addRow("Country code (Schedule FA)", countryCodeInfo(profile.country));
   const business = [profile.sector, profile.industry].filter(Boolean).join(" · ");
   addRow("Nature of business", business);
   addRow("Website", profile.website, true);
@@ -374,8 +419,9 @@ function renderProfile(profile) {
   fa.textContent =
     "Schedule FA (ITR) tip: for vested RSUs/ESPP of a listed foreign company, " +
     "the “Nature of entity” is usually “Listed Equity Shares — Foreign”. Use the " +
-    "registered address above for the entity address, and the SBI TT buy rate " +
-    "for INR conversion. This is general information, not tax advice.";
+    "registered address, ZIP and country code above (the country code is the " +
+    "country’s ISD dialling code), and the SBI TT buy rate for INR conversion. " +
+    "This is general information, not tax advice.";
   box.appendChild(fa);
 
   box.hidden = false;
