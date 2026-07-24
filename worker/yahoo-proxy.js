@@ -18,6 +18,7 @@
 
 const YAHOO_HOST = "https://query1.finance.yahoo.com/v8/finance/chart/";
 const YAHOO_QS = "https://query2.finance.yahoo.com/v10/finance/quoteSummary/";
+const YAHOO_SEARCH = "https://query1.finance.yahoo.com/v1/finance/search";
 const YAHOO_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
   "(KHTML, like Gecko) Chrome/120.0 Safari/537.36";
@@ -99,6 +100,45 @@ async function handleProfile(symbol, origin) {
     summary: ap.longBusinessSummary || "",
   };
   return json({ profile: slim }, 200, origin);
+}
+
+// Company/symbol autocomplete. Proxies Yahoo's fuzzy search and returns a slim
+// list of equities so the frontend can let users type a company NAME instead of
+// needing the exact ticker. Responses are edge-cached (see cached()).
+async function handleSearch(rawQuery, origin) {
+  const query = rawQuery.slice(0, 60);
+  const qs = new URLSearchParams({
+    q: query,
+    quotesCount: "10",
+    newsCount: "0",
+    enableFuzzyQuery: "true",
+    quotesQueryId: "tss_match_phrase_query",
+  });
+  const upstream = await fetch(`${YAHOO_SEARCH}?${qs}`, {
+    headers: { "User-Agent": YAHOO_UA, Accept: "application/json" },
+    cf: { cacheTtl: 86400, cacheEverything: true },
+  });
+  if (!upstream.ok) {
+    return json({ error: `Search upstream ${upstream.status}` }, 502, origin);
+  }
+  const data = await upstream.json();
+  const quotes = (data && data.quotes) || [];
+  const results = [];
+  for (const q of quotes) {
+    if (!q || !q.symbol) continue;
+    // Keep tradable instruments; drop options/futures noise.
+    const t = q.quoteType || "";
+    if (!["EQUITY", "ETF", "MUTUALFUND", "INDEX"].includes(t)) continue;
+    if (!SYMBOL_RE.test(q.symbol)) continue;
+    results.push({
+      symbol: q.symbol,
+      name: q.longname || q.shortname || q.symbol,
+      exchange: q.exchDisp || q.exchange || "",
+      type: t,
+    });
+    if (results.length >= 8) break;
+  }
+  return json({ results }, 200, origin);
 }
 
 function corsHeaders(origin) {
@@ -256,6 +296,14 @@ export default {
     }
 
     const url = new URL(request.url);
+
+    // --- Company/symbol autocomplete (free-text query). ---
+    const searchQ = url.searchParams.get("search");
+    if (searchQ !== null) {
+      const q = searchQ.trim();
+      if (q.length < 2) return json({ results: [] }, 200, origin);
+      return cached(request, ctx, () => handleSearch(q, origin));
+    }
 
     // --- PDF proxy: re-serve whitelisted SBI PDFs as application/pdf so they
     // render inline instead of downloading (GitHub raw sends octet-stream). ---

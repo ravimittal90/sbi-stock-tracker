@@ -199,6 +199,20 @@ async function fetchProfile(symbol) {
   }
 }
 
+// --- symbol autocomplete ---------------------------------------------------
+// Query Yahoo (via the Worker) for company-name / symbol matches. Best-effort.
+async function searchSymbols(query, signal) {
+  const base = (CFG.PROXY_URL || "").replace(/\/$/, "");
+  if (!base) return [];
+  const resp = await fetch(
+    `${base}/?search=${encodeURIComponent(query)}`,
+    { headers: { Accept: "application/json" }, signal }
+  );
+  if (!resp.ok) return [];
+  const data = await resp.json();
+  return (data && data.results) || [];
+}
+
 // ITR Schedule FA uses the ISD dialling code as the "Country Code".
 // Yahoo returns the full country name, so map name -> { iso2, isd }.
 const COUNTRY_CODES = {
@@ -465,14 +479,35 @@ function renderProfile(profile) {
 // --- form handling ---------------------------------------------------------
 async function onSubmit(ev) {
   ev.preventDefault();
-  const symbol = el("symbol").value.trim();
+  let symbol = el("symbol").value.trim();
   const year = el("year").value ? parseInt(el("year").value, 10) : null;
   const onDate = el("on-date").value || null;
 
+  // If the user typed a company name (not a valid ticker) and didn't pick a
+  // suggestion, resolve it to the best-matching symbol via Yahoo search.
   if (!SYMBOL_RE.test(symbol)) {
-    setStatus("Please enter a valid Yahoo symbol (letters, digits, . - ^ =).", true);
-    return;
+    if (symbol.length < 2) {
+      setStatus("Type a company name or stock symbol.", true);
+      return;
+    }
+    setStatus("Finding matching stock…");
+    let matches = [];
+    try {
+      matches = await searchSymbols(symbol);
+    } catch {
+      /* fall through to error below */
+    }
+    if (!matches.length) {
+      setStatus(
+        "No matching stock found. Try a different name, or type the exact symbol.",
+        true
+      );
+      return;
+    }
+    symbol = matches[0].symbol;
+    el("symbol").value = symbol;
   }
+
   if (!year && !onDate) {
     setStatus("Enter a calendar year and/or a specific date.", true);
     return;
@@ -631,6 +666,126 @@ function populateQuickPick() {
   });
 }
 
+// Wire the company/symbol autocomplete dropdown onto the #symbol input.
+function setupAutocomplete() {
+  const input = el("symbol");
+  const box = el("symbol-suggest");
+  if (!input || !box) return;
+
+  const cache = new Map(); // query -> results (per-browser, instant re-type)
+  let items = [];
+  let active = -1;
+  let timer = null;
+  let controller = null;
+  let lastQuery = "";
+
+  const close = () => {
+    box.hidden = true;
+    box.textContent = "";
+    input.setAttribute("aria-expanded", "false");
+    active = -1;
+    items = [];
+  };
+
+  const choose = (it) => {
+    if (!it) return;
+    input.value = it.symbol;
+    input.dataset.resolved = it.symbol;
+    close();
+  };
+
+  const render = (results) => {
+    box.textContent = "";
+    items = results;
+    active = -1;
+    if (!results.length) {
+      close();
+      return;
+    }
+    results.forEach((it, i) => {
+      const li = document.createElement("li");
+      li.className = "suggest-item";
+      li.setAttribute("role", "option");
+      li.id = `sugg-${i}`;
+      const name = document.createElement("span");
+      name.className = "sugg-name";
+      name.textContent = it.name;
+      const meta = document.createElement("span");
+      meta.className = "sugg-meta";
+      meta.textContent = `${it.symbol}${it.exchange ? " · " + it.exchange : ""}`;
+      li.appendChild(name);
+      li.appendChild(meta);
+      li.addEventListener("mousedown", (ev) => {
+        ev.preventDefault(); // keep focus; fire before blur
+        choose(it);
+      });
+      box.appendChild(li);
+    });
+    box.hidden = false;
+    input.setAttribute("aria-expanded", "true");
+  };
+
+  const run = async (q) => {
+    if (cache.has(q)) {
+      render(cache.get(q));
+      return;
+    }
+    if (controller) controller.abort();
+    controller = new AbortController();
+    try {
+      const results = await searchSymbols(q, controller.signal);
+      cache.set(q, results);
+      if (input.value.trim() === q) render(results); // ignore stale
+    } catch {
+      /* aborted or network error: leave dropdown as-is */
+    }
+  };
+
+  const setActive = (i) => {
+    const lis = box.querySelectorAll(".suggest-item");
+    lis.forEach((li) => li.classList.remove("active"));
+    active = i;
+    if (i >= 0 && lis[i]) {
+      lis[i].classList.add("active");
+      input.setAttribute("aria-activedescendant", lis[i].id);
+    }
+  };
+
+  input.addEventListener("input", () => {
+    input.dataset.resolved = ""; // typing invalidates a prior pick
+    const q = input.value.trim();
+    lastQuery = q;
+    if (timer) clearTimeout(timer);
+    if (q.length < 2) {
+      close();
+      return;
+    }
+    timer = setTimeout(() => {
+      if (input.value.trim() === q) run(q);
+    }, 250);
+  });
+
+  input.addEventListener("keydown", (ev) => {
+    if (box.hidden) return;
+    if (ev.key === "ArrowDown") {
+      ev.preventDefault();
+      setActive(Math.min(active + 1, items.length - 1));
+    } else if (ev.key === "ArrowUp") {
+      ev.preventDefault();
+      setActive(Math.max(active - 1, 0));
+    } else if (ev.key === "Enter") {
+      if (active >= 0 && items[active]) {
+        ev.preventDefault();
+        choose(items[active]);
+      }
+    } else if (ev.key === "Escape") {
+      close();
+    }
+  });
+
+  input.addEventListener("blur", () => setTimeout(close, 120));
+}
+
 async function loadSbi() {
   try {
     const resp = await fetch(CFG.SBI_DATA_URL || "data/sbi-tt.json");
@@ -645,6 +800,7 @@ async function loadSbi() {
 function init() {
   populateCountries();
   populateQuickPick();
+  setupAutocomplete();
   el("lookup-form").addEventListener("submit", onSubmit);
   el("sbi-pdf-form").addEventListener("submit", onSbiPdfSubmit);
   el("feedback-form").addEventListener("submit", onFeedbackSubmit);

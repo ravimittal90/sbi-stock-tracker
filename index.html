@@ -38,27 +38,30 @@
           <form id="lookup-form" autocomplete="off">
             <div class="grid">
               <label class="field field-wide">
-                <span>Stock symbol (type any Yahoo Finance symbol)</span>
-                <input
-                  id="symbol"
-                  type="text"
-                  inputmode="text"
-                  maxlength="20"
-                  placeholder="e.g. MSFT, 7203.T, SAP.DE, CBA.AX"
-                  pattern="[A-Za-z0-9.\-\^=]{1,20}"
-                  required
-                />
+                <span>Company name or stock symbol</span>
+                <div class="suggest-wrap">
+                  <input
+                    id="symbol"
+                    type="text"
+                    inputmode="text"
+                    maxlength="80"
+                    autocomplete="off"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    spellcheck="false"
+                    role="combobox"
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-controls="symbol-suggest"
+                    placeholder="Type a company (e.g. Microsoft, Toyota) or symbol"
+                  />
+                  <ul id="symbol-suggest" class="suggest" role="listbox" hidden></ul>
+                </div>
                 <small class="hint"
-                  >Any exchange works. Non-US needs a suffix: London
-                  <code>.L</code>, Frankfurt <code>.DE</code>, Paris
-                  <code>.PA</code>, Australia <code>.AX</code>, Tokyo
-                  <code>.T</code>. Not sure? Look it up on
-                  <a
-                    href="https://finance.yahoo.com/lookup"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    >Yahoo Finance</a
-                  >.</small
+                  >Start typing a company name or symbol and pick from the list —
+                  any global exchange works. The exact symbol (e.g. London
+                  <code>.L</code>, Tokyo <code>.T</code>) is filled in for
+                  you.</small
                 >
               </label>
 
