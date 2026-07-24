@@ -55,7 +55,7 @@ const PDF_HOSTS = new Set([
   "www.sbi.co.in",
 ]);
 
-async function handlePdf(pdfParam, origin) {
+async function handlePdf(pdfParam, origin, download, dlName) {
   let target;
   try {
     target = new URL(pdfParam);
@@ -83,12 +83,20 @@ async function handlePdf(pdfParam, origin) {
     return json({ error: `PDF upstream ${upstream.status}` }, 502, origin);
   }
 
+  // Sanitise the download filename (defence-in-depth against header injection).
+  const safeName = (dlName || "SBI-FOREX-CARD-RATES.pdf")
+    .replace(/[^A-Za-z0-9._-]/g, "")
+    .slice(0, 60);
+  const disposition = download
+    ? `attachment; filename="${safeName}"`
+    : "inline";
+
   const allow = ALLOWED_ORIGINS.includes("*") ? "*" : origin;
   return new Response(upstream.body, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": "inline",
+      "Content-Disposition": disposition,
       "Access-Control-Allow-Origin": allow,
       "Cache-Control": "public, max-age=86400",
     },
@@ -111,7 +119,9 @@ export default {
     // render inline instead of downloading (GitHub raw sends octet-stream). ---
     const pdfParam = url.searchParams.get("pdf");
     if (pdfParam) {
-      return handlePdf(pdfParam, origin);
+      const download = url.searchParams.get("dl") === "1";
+      const dlName = url.searchParams.get("name") || "";
+      return handlePdf(pdfParam, origin, download, dlName);
     }
 
     const symbol = (url.searchParams.get("symbol") || "").trim();

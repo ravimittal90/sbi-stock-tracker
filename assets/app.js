@@ -39,6 +39,31 @@ function fmtINR(n) {
 }
 
 // --- SBI lookups -----------------------------------------------------------
+// Find the SBI snapshot on-or-before `dateStr` that has a PDF, and return
+// { date, pdf }. Used by the standalone "PDF for any date" feature.
+function sbiPdfOnOrBefore(dateStr) {
+  if (!SBI_DATES.length) return null;
+  let lo = 0,
+    hi = SBI_DATES.length - 1,
+    idx = -1;
+  while (lo <= hi) {
+    const mid = (lo + hi) >> 1;
+    if (SBI_DATES[mid] <= dateStr) {
+      idx = mid;
+      lo = mid + 1;
+    } else {
+      hi = mid - 1;
+    }
+  }
+  while (idx >= 0) {
+    const d = SBI_DATES[idx];
+    const entry = SBI[d];
+    if (entry && entry.pdf) return { date: d, pdf: entry.pdf };
+    idx--;
+  }
+  return null;
+}
+
 // Find the SBI snapshot on-or-before `dateStr` and return its TT BUY for `ccy`.
 function sbiOnOrBefore(dateStr, ccy) {
   if (!SBI_DATES.length) return null;
@@ -316,14 +341,31 @@ function pdfViewerSrc(pdf) {
   return pdf; // relative local path
 }
 
+// Download URL. Local PDFs use the anchor's `download` attribute directly;
+// external PDFs go through the Worker with dl=1 so it sends an attachment
+// disposition (the `download` attribute is ignored cross-origin).
+function pdfDownloadSrc(pdf, date) {
+  if (/^https?:\/\//i.test(pdf)) {
+    const base = (CFG.PROXY_URL || "").replace(/\/$/, "");
+    const name = `SBI-FOREX-CARD-RATES-${date}.pdf`;
+    return `${base}/?pdf=${encodeURIComponent(pdf)}&dl=1&name=${encodeURIComponent(
+      name
+    )}`;
+  }
+  return pdf;
+}
+
 function openPdf(pdf, date) {
   const modal = el("pdf-modal");
   const frame = el("pdf-frame");
   const openTab = el("pdf-open-tab");
+  const dl = el("pdf-download");
   el("pdf-title").textContent = `SBI FOREX CARD RATES — ${date}`;
   const src = pdfViewerSrc(pdf);
   frame.src = src;
   openTab.href = src;
+  dl.href = pdfDownloadSrc(pdf, date);
+  dl.setAttribute("download", `SBI-FOREX-CARD-RATES-${date}.pdf`);
   modal.hidden = false;
   document.body.style.overflow = "hidden";
 }
@@ -334,6 +376,39 @@ function closePdf() {
   modal.hidden = true;
   el("pdf-frame").src = "about:blank";
   document.body.style.overflow = "";
+}
+
+// --- Standalone: SBI TT rate PDF for any picked date -----------------------
+function onSbiPdfSubmit(ev) {
+  ev.preventDefault();
+  const status = el("sbi-pdf-status");
+  const dl = el("sbi-download");
+  dl.hidden = true;
+  const picked = el("sbi-date").value;
+  if (!picked) {
+    status.textContent = "Please pick a date.";
+    status.classList.add("error");
+    return;
+  }
+  const hit = sbiPdfOnOrBefore(picked);
+  if (!hit) {
+    status.classList.add("error");
+    status.textContent =
+      "No SBI rate card is available on or before that date in our records.";
+    return;
+  }
+  status.classList.remove("error");
+  const exact = hit.date === picked;
+  status.textContent = exact
+    ? `Showing the SBI rate card published on ${hit.date}.`
+    : `No card published exactly on ${picked}; showing the applicable card from ${hit.date}.`;
+
+  // Wire the download button (works for both local + proxied external PDFs).
+  dl.href = pdfDownloadSrc(hit.pdf, hit.date);
+  dl.setAttribute("download", `SBI-FOREX-CARD-RATES-${hit.date}.pdf`);
+  dl.hidden = false;
+
+  openPdf(hit.pdf, hit.date);
 }
 
 // --- init ------------------------------------------------------------------
@@ -385,6 +460,7 @@ function init() {
   populateQuickPick();
   loadSbi();
   el("lookup-form").addEventListener("submit", onSubmit);
+  el("sbi-pdf-form").addEventListener("submit", onSbiPdfSubmit);
 
   // PDF modal close handlers.
   el("pdf-close").addEventListener("click", closePdf);

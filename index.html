@@ -101,6 +101,33 @@
         <div class="cards" id="result-cards"></div>
         <p class="note" id="currency-note"></p>
       </section>
+
+      <section class="card sbi-card" aria-label="SBI PDF by date">
+        <h2 class="section-title">SBI TT rate PDF for any date</h2>
+        <p class="section-sub">
+          Pick any date to view or download the official SBI FOREX CARD RATES
+          PDF that applied on that day (the nearest published rate card on or
+          before it).
+        </p>
+        <form id="sbi-pdf-form" autocomplete="off">
+          <div class="grid">
+            <label class="field">
+              <span>Date</span>
+              <input id="sbi-date" type="date" required />
+            </label>
+            <div class="field field-btns">
+              <span>&nbsp;</span>
+              <div class="btn-row">
+                <button type="submit" id="sbi-view">View PDF</button>
+                <a id="sbi-download" class="btn-secondary" download hidden
+                  >Download</a
+                >
+              </div>
+            </div>
+          </div>
+        </form>
+        <p id="sbi-pdf-status" class="status" role="status" aria-live="polite"></p>
+      </section>
     </main>
 
     <div id="pdf-modal" class="modal" hidden>
@@ -109,6 +136,7 @@
         <div class="modal-bar">
           <span id="pdf-title">SBI FOREX CARD RATES</span>
           <span class="modal-actions">
+            <a id="pdf-download" href="#" download>Download ⤓</a>
             <a id="pdf-open-tab" href="#" target="_blank" rel="noopener noreferrer"
               >Open in new tab ↗</a
             >

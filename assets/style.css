@@ -57,6 +57,48 @@ main {
   padding: 1.4rem;
 }
 
+.sbi-card {
+  margin-top: 1.5rem;
+}
+.section-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+}
+.section-sub {
+  margin: 0 0 1rem;
+  color: var(--muted);
+  font-size: 0.88rem;
+  line-height: 1.5;
+}
+.field-btns {
+  justify-content: flex-end;
+}
+.btn-row {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+.btn-row #sbi-view {
+  margin-top: 0;
+  width: auto;
+  padding: 0.7rem 1.4rem;
+}
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.7rem 1.2rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--accent);
+  background: #eef2ff;
+  border: 1px solid #c7d2fe;
+  border-radius: 12px;
+  text-decoration: none;
+}
+.btn-secondary:hover {
+  background: #e0e7ff;
+}
+
 .grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
