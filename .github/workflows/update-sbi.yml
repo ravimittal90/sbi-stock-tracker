@@ -1,0 +1,43 @@
+name: Update SBI TT rates
+
+on:
+  schedule:
+    # 09:15 and 14:15 IST (03:45 & 08:45 UTC) — after SBI publishes rate cards.
+    - cron: "45 3 * * *"
+    - cron: "45 8 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-sbi
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r scripts/requirements.txt
+
+      - name: Fetch & parse today's SBI rates
+        run: python scripts/update_sbi.py
+
+      - name: Commit if changed
+        run: |
+          git config user.name "sbi-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add data/
+          if git diff --cached --quiet; then
+            echo "No changes."
+          else
+            git commit -m "SBI TT rates: $(date -u +%Y-%m-%d)"
+            git push
+          fi

@@ -1,0 +1,6 @@
+name = "sbi-stock-tracker-proxy"
+main = "yahoo-proxy.js"
+compatibility_date = "2024-11-01"
+
+# Free plan works. After `npx wrangler deploy`, note the *.workers.dev URL and
+# put it in assets/config.js (PROXY_URL).

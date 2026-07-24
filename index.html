@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- Security: strict CSP. No inline scripts/styles; only self + Cloudflare
+         Workers for the price proxy. Adjust connect-src if you use a custom
+         proxy domain. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none';
+               base-uri 'self';
+               form-action 'none';
+               img-src 'self' data:;
+               style-src 'self';
+               script-src 'self';
+               connect-src 'self' https://*.workers.dev;
+               frame-ancestors 'none';"
+    />
+    <meta name="referrer" content="no-referrer" />
+    <title>SBI TT &amp; Stock Value Tracker</title>
+    <link rel="stylesheet" href="assets/style.css" />
+  </head>
+  <body>
+    <header class="hero">
+      <h1>SBI&nbsp;TT &amp; Stock Value Tracker</h1>
+      <p class="tagline">
+        Peak, year-end and on-date share values with the matching
+        <abbr title="Telegraphic Transfer">SBI&nbsp;TT</abbr> buying rate — for
+        Indian tax filing (RSU / ESPP / foreign shares).
+      </p>
+    </header>
+
+    <main>
+      <section class="card" aria-label="Lookup form">
+        <form id="lookup-form" autocomplete="off">
+          <div class="grid">
+            <label class="field">
+              <span>Quick pick</span>
+              <select id="quick-pick">
+                <option value="">— choose a common stock —</option>
+              </select>
+            </label>
+
+            <label class="field">
+              <span>Country / Exchange</span>
+              <select id="country" required></select>
+            </label>
+
+            <label class="field">
+              <span>Stock symbol (Yahoo)</span>
+              <input
+                id="symbol"
+                type="text"
+                inputmode="text"
+                maxlength="20"
+                placeholder="e.g. MSFT, 7203.T, SAP.DE"
+                pattern="[A-Za-z0-9.\-\^=]{1,20}"
+                required
+              />
+            </label>
+
+            <label class="field">
+              <span>Calendar year</span>
+              <input
+                id="year"
+                type="number"
+                min="1990"
+                max="2100"
+                placeholder="e.g. 2024"
+              />
+            </label>
+
+            <label class="field">
+              <span>Specific date (optional)</span>
+              <input id="on-date" type="date" />
+            </label>
+          </div>
+
+          <button type="submit" id="go">Get values</button>
+        </form>
+      </section>
+
+      <section id="status" class="status" role="status" aria-live="polite"></section>
+
+      <section id="results" class="results" hidden>
+        <h2 id="result-title"></h2>
+        <div class="cards" id="result-cards"></div>
+        <p class="note" id="currency-note"></p>
+      </section>
+    </main>
+
+    <footer>
+      <p>
+        Share prices via Yahoo Finance (unofficial). SBI TT rates parsed from
+        official SBI FOREX CARD RATES PDFs — click any rate to verify. No login,
+        no tracking, no data stored about you.
+      </p>
+    </footer>
+
+    <script src="assets/config.js"></script>
+    <script src="assets/stocks.js"></script>
+    <script src="assets/app.js"></script>
+  </body>
+</html>
