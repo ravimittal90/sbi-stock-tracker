@@ -1049,6 +1049,11 @@ function setupDateRange() {
   });
 
   pop.addEventListener("click", (ev) => {
+    // Keep clicks inside the popover from reaching the document outside-click
+    // handler. This matters because handling a nav/day click rebuilds the
+    // calendar DOM, detaching ev.target — after which daterange.contains(target)
+    // would be false and wrongly close the popover.
+    ev.stopPropagation();
     const t = ev.target;
     if (t.dataset && t.dataset.year) {
       drApplyYear(parseInt(t.dataset.year, 10));
