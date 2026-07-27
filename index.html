@@ -37,45 +37,42 @@
         <section class="card" aria-label="Lookup form">
           <form id="lookup-form" autocomplete="off">
             <div class="grid">
-              <label class="field field-wide">
-                <span>Company name or stock symbol</span>
-                <div class="suggest-wrap">
-                  <input
-                    id="symbol"
-                    type="text"
-                    inputmode="text"
-                    maxlength="80"
-                    autocomplete="off"
-                    autocapitalize="off"
-                    autocorrect="off"
-                    spellcheck="false"
-                    role="combobox"
-                    aria-autocomplete="list"
-                    aria-expanded="false"
-                    aria-controls="symbol-suggest"
-                    placeholder="Type a company (e.g. Microsoft, Toyota) or symbol"
-                  />
-                  <ul id="symbol-suggest" class="suggest" role="listbox" hidden></ul>
-                </div>
-                <small class="hint"
-                  >Start typing a company name or symbol and pick from the list —
-                  any global exchange works. The exact symbol (e.g. London
-                  <code>.L</code>, Tokyo <code>.T</code>) is filled in for
-                  you.</small
-                >
-              </label>
+              <div class="field-wide symbol-row">
+                <label class="field">
+                  <span>Type company name or stock symbol</span>
+                  <div class="suggest-wrap">
+                    <input
+                      id="symbol"
+                      type="text"
+                      inputmode="text"
+                      maxlength="80"
+                      autocomplete="off"
+                      autocapitalize="off"
+                      autocorrect="off"
+                      spellcheck="false"
+                      role="combobox"
+                      aria-autocomplete="list"
+                      aria-expanded="false"
+                      aria-controls="symbol-suggest"
+                      placeholder="Type a company (e.g. Microsoft, Toyota) or symbol"
+                    />
+                    <ul id="symbol-suggest" class="suggest" role="listbox" hidden></ul>
+                  </div>
+                  <small class="hint"
+                    >Start typing a company name or symbol and pick from the list
+                    — any global exchange works. The exact symbol (e.g. London
+                    <code>.L</code>, Tokyo <code>.T</code>) is filled in for
+                    you.</small
+                  >
+                </label>
 
-              <label class="field">
-                <span>…or quick-pick a common stock</span>
-                <select id="quick-pick">
-                  <option value="">— choose from the list —</option>
-                </select>
-              </label>
-
-              <label class="field">
-                <span>Country / Exchange (optional)</span>
-                <select id="country"></select>
-              </label>
+                <label class="field">
+                  <span>…or quick-pick a common stock</span>
+                  <select id="quick-pick">
+                    <option value="">— choose from the list —</option>
+                  </select>
+                </label>
+              </div>
 
               <div class="field daterange-field">
                 <span>Date range</span>

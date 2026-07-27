@@ -186,6 +186,20 @@ textarea:focus {
   grid-column: 1 / -1;
 }
 
+/* Symbol input + quick-pick sit side by side (they're two ways to do the same
+   thing), stacking on narrow screens. */
+.symbol-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+@media (max-width: 640px) {
+  .symbol-row {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Symbol autocomplete dropdown */
 .suggest-wrap {
   position: relative;

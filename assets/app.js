@@ -682,27 +682,11 @@ function onFeedbackSubmit(ev) {
 }
 
 // --- init ------------------------------------------------------------------
-function populateCountries() {
-  const sel = el("country");
-  const blank = document.createElement("option");
-  blank.value = "";
-  blank.textContent = "— optional —";
-  sel.appendChild(blank);
-  const map = window.COUNTRY_CURRENCY || {};
-  Object.keys(map).forEach((code) => {
-    const opt = document.createElement("option");
-    opt.value = code;
-    opt.textContent = `${code} (${map[code]})`;
-    sel.appendChild(opt);
-  });
-}
-
 function populateQuickPick() {
   const sel = el("quick-pick");
   (window.STOCKS || []).forEach((s) => {
     const opt = document.createElement("option");
     opt.value = s.symbol;
-    opt.dataset.country = s.country;
     opt.textContent = `${s.name} — ${s.symbol}`;
     sel.appendChild(opt);
   });
@@ -710,7 +694,6 @@ function populateQuickPick() {
     const opt = sel.options[sel.selectedIndex];
     if (!opt.value) return;
     el("symbol").value = opt.value;
-    if (opt.dataset.country) el("country").value = opt.dataset.country;
   });
 }
 
@@ -1094,7 +1077,6 @@ function setupDateRange() {
 }
 
 function init() {
-  populateCountries();
   populateQuickPick();
   setupAutocomplete();
   setupDateRange();
@@ -1124,7 +1106,6 @@ function init() {
   const prevYear = new Date().getFullYear() - 1;
   el("symbol").value = "MSFT";
   el("quick-pick").value = "MSFT";
-  el("country").value = "US";
   drSetRange(`${prevYear}-01-01`, `${prevYear}-12-31`);
   loadSbi().then(() => {
     el("lookup-form").requestSubmit();

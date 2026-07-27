@@ -14,7 +14,8 @@ shares (RSU / ESPP)**. For any stock you get:
 - The **INR equivalent** (price × SBI TT buy)
 
 Works for common US / UK / Europe / Australia / Japan stocks out of the box, and
-with **any Yahoo symbol** you type (pick the country + symbol).
+with **any Yahoo symbol** you type (the exact symbol is auto-filled from the
+search suggestions).
 
 No login. No tracking. No personal data stored.
 
