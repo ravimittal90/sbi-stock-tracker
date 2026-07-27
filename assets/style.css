@@ -552,6 +552,12 @@ footer {
   width: max-content;
   max-width: 92vw;
 }
+.dr-quick-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0.1rem 0.25rem 0.4rem;
+}
 .dr-quick {
   display: flex;
   flex-wrap: wrap;
@@ -608,17 +614,17 @@ footer {
 }
 .dr-nav {
   border: none;
-  background: none;
-  color: var(--muted);
-  font-size: 1rem;
+  background: #f1f5f9;
+  color: var(--ink);
+  font-size: 1.15rem;
   line-height: 1;
-  padding: 0.2rem 0.35rem;
+  padding: 0.3rem 0.5rem;
   cursor: pointer;
   border-radius: 6px;
 }
 .dr-nav:hover {
-  background: #eef2ff;
-  color: var(--accent);
+  background: var(--accent);
+  color: #fff;
 }
 .dr-grid {
   display: grid;
@@ -662,6 +668,12 @@ footer {
   color: #fff;
   font-weight: 700;
   border-radius: 8px;
+}
+.dr-msg {
+  margin: 0.6rem 0.25rem 0;
+  color: #dc2626;
+  font-size: 0.82rem;
+  font-weight: 600;
 }
 @media (max-width: 640px) {
   .dr-cals {

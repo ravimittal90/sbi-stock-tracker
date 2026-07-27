@@ -954,7 +954,6 @@ function drRenderCal(container, which) {
       disabled = true;
     }
     if (iso > today) disabled = true; // no future dates
-    if (which === "to" && DR.from && iso < DR.from) disabled = true;
     if (disabled) b.disabled = true;
 
     if (iso === DR.from || iso === DR.to) b.classList.add("dr-sel");
@@ -971,6 +970,20 @@ function drRender() {
   drRenderCal(el("dr-cal-to"), "to");
 }
 
+// The only rule: start date must be on or before end date. Show an inline hint
+// (the From/To calendars are otherwise fully independent of each other and of
+// the quick-pick year).
+function drValidate() {
+  const msg = el("dr-msg");
+  if (DR.from && DR.to && DR.from > DR.to) {
+    msg.textContent = "Start date must be on or before end date.";
+    msg.hidden = false;
+    return false;
+  }
+  msg.hidden = true;
+  return true;
+}
+
 function drOpen() {
   const pop = el("daterange-pop");
   if (!pop.hidden) return;
@@ -978,6 +991,7 @@ function drOpen() {
   DR.viewFrom = base;
   DR.viewTo = DR.to ? firstOfMonth(DR.to) : base;
   drRender();
+  drValidate();
   pop.hidden = false;
   el("daterange-input").setAttribute("aria-expanded", "true");
 }
@@ -1016,6 +1030,7 @@ function drApplyYear(yv) {
   drSetRange(from, to);
   DR.viewFrom = firstOfMonth(from);
   DR.viewTo = firstOfMonth(to);
+  drValidate();
   drRender();
 }
 
@@ -1037,7 +1052,6 @@ function setupDateRange() {
     const t = ev.target;
     if (t.dataset && t.dataset.year) {
       drApplyYear(parseInt(t.dataset.year, 10));
-      drClose();
       return;
     }
     if (t.dataset && t.dataset.nav) {
@@ -1054,15 +1068,13 @@ function setupDateRange() {
       const iso = t.dataset.date;
       if (t.dataset.which === "from") {
         DR.from = iso;
-        if (DR.to && DR.from > DR.to) DR.to = null;
         DR.viewFrom = firstOfMonth(iso);
-        if (!DR.to) DR.viewTo = firstOfMonth(iso);
       } else {
-        if (DR.from && iso < DR.from) return;
         DR.to = iso;
         DR.viewTo = firstOfMonth(iso);
       }
       drSyncInputs();
+      drValidate();
       drRender();
     }
   });
