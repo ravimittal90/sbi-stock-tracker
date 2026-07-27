@@ -15,6 +15,14 @@ let SBI_DATES = []; // sorted ascending
 const el = (id) => document.getElementById(id);
 const statusEl = () => el("status");
 
+// Local calendar date as YYYY-MM-DD — used to cap date pickers to "today" so
+// no future date can be requested for prices or SBI rate cards.
+function todayStr() {
+  const d = new Date();
+  const p = (n) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function setStatus(msg, isError) {
   const s = statusEl();
   s.textContent = msg || "";
@@ -122,7 +130,7 @@ async function fetchWithRetry(url, opts, tries = 3) {
   throw lastErr || new Error("Network error.");
 }
 
-async function fetchSeries(symbol, year, onDate) {
+async function fetchSeries(symbol, fromDate, toDate, onDate) {
   if (!CFG.PROXY_URL || CFG.PROXY_URL.includes("example.workers.dev")) {
     throw new Error(
       "Price proxy not configured. Set PROXY_URL in assets/config.js."
@@ -130,13 +138,14 @@ async function fetchSeries(symbol, year, onDate) {
   }
 
   // Determine the date window we need (UTC), padded so nearest-prior-trading-day
-  // lookups near Jan 1 / the chosen date still have earlier rows to fall back to.
+  // lookups near the range start / the chosen date still have earlier rows to
+  // fall back to.
   const DAY = 86400;
   const needStarts = [];
   const needEnds = [];
-  if (year) {
-    needStarts.push(Date.UTC(year, 0, 1) / 1000);
-    needEnds.push(Date.UTC(year, 11, 31) / 1000);
+  if (fromDate && toDate) {
+    needStarts.push(Date.parse(fromDate + "T00:00:00Z") / 1000);
+    needEnds.push(Date.parse(toDate + "T00:00:00Z") / 1000);
   }
   if (onDate) {
     const t = Date.parse(onDate + "T00:00:00Z") / 1000;
@@ -281,10 +290,10 @@ function normaliseCurrency(meta) {
 }
 
 // --- core computations -----------------------------------------------------
-function peakForYear(rows, year, factor) {
+function peakForRange(rows, fromDate, toDate, factor) {
   let best = null;
   for (const r of rows) {
-    if (!r.date.startsWith(String(year))) continue;
+    if (r.date < fromDate || r.date > toDate) continue;
     const val = r.high != null ? r.high : r.close;
     if (val == null) continue;
     if (!best || val > best.value) best = { value: val * factor, date: r.date };
@@ -292,12 +301,11 @@ function peakForYear(rows, year, factor) {
   return best;
 }
 
-function closingForYear(rows, year, factor) {
-  const target = `${year}-12-31`;
+function closingForRange(rows, fromDate, toDate, factor) {
   let last = null;
   for (const r of rows) {
-    if (!r.date.startsWith(String(year))) continue;
-    if (r.date <= target && r.close != null) last = r;
+    if (r.date < fromDate || r.date > toDate) continue;
+    if (r.close != null) last = r;
   }
   if (!last) return null;
   return { value: last.close * factor, date: last.date };
@@ -392,21 +400,27 @@ function metricCard(kind, title, priceObj, ccy, symbol) {
   return card;
 }
 
-function render(symbol, ccy, factor, series, year, onDate) {
+function render(symbol, ccy, factor, series, fromDate, toDate, onDate) {
   const results = el("results");
   const cards = el("result-cards");
   cards.textContent = "";
   el("result-title").textContent = `${symbol} — priced in ${ccy}`;
 
-  if (year) {
+  if (fromDate && toDate) {
     cards.appendChild(
-      metricCard("peak", `Peak in ${year}`, peakForYear(series.rows, year, factor), ccy, symbol)
+      metricCard(
+        "peak",
+        `Peak (${fromDate} → ${toDate})`,
+        peakForRange(series.rows, fromDate, toDate, factor),
+        ccy,
+        symbol
+      )
     );
     cards.appendChild(
       metricCard(
         "close",
-        `Year-end close ${year}`,
-        closingForYear(series.rows, year, factor),
+        `Closing (as of ${toDate})`,
+        closingForRange(series.rows, fromDate, toDate, factor),
         ccy,
         symbol
       )
@@ -499,7 +513,8 @@ function renderProfile(profile) {
 async function onSubmit(ev) {
   ev.preventDefault();
   let symbol = el("symbol").value.trim();
-  const year = el("year").value ? parseInt(el("year").value, 10) : null;
+  const fromDate = el("from-date").value || null;
+  const toDate = el("to-date").value || null;
   const onDate = el("on-date").value || null;
 
   // If the user typed a company name (not a valid ticker) and didn't pick a
@@ -527,12 +542,21 @@ async function onSubmit(ev) {
     el("symbol").value = symbol;
   }
 
-  if (!year && !onDate) {
-    setStatus("Enter a calendar year and/or a specific date.", true);
+  if ((fromDate || toDate) && !(fromDate && toDate)) {
+    setStatus("Enter both a From date and a To date for the range.", true);
     return;
   }
-  if (year && (year < 1990 || year > 2100)) {
-    setStatus("Year looks out of range.", true);
+  if (!fromDate && !onDate) {
+    setStatus("Pick a date range and/or a specific date.", true);
+    return;
+  }
+  const today = todayStr();
+  if ((fromDate && fromDate > today) || (toDate && toDate > today) || (onDate && onDate > today)) {
+    setStatus("Dates can't be in the future.", true);
+    return;
+  }
+  if (fromDate && toDate && fromDate > toDate) {
+    setStatus("The From date must be on or before the To date.", true);
     return;
   }
 
@@ -542,12 +566,12 @@ async function onSubmit(ev) {
   setStatus("Fetching prices…");
   try {
     const [series, profile] = await Promise.all([
-      fetchSeries(symbol, year, onDate),
+      fetchSeries(symbol, fromDate, toDate, onDate),
       fetchProfile(symbol),
     ]);
     const { ccy, factor } = normaliseCurrency(series.meta);
     setStatus(`Loaded ${series.rows.length} trading days.`);
-    render(symbol, ccy, factor, series, year, onDate);
+    render(symbol, ccy, factor, series, fromDate, toDate, onDate);
     renderProfile(profile);
   } catch (err) {
     setStatus(err.message || "Something went wrong.", true);
@@ -615,6 +639,11 @@ function onSbiPdfSubmit(ev) {
   if (!picked) {
     status.textContent = "Please pick a date.";
     status.classList.add("error");
+    return;
+  }
+  if (picked > todayStr()) {
+    status.classList.add("error");
+    status.textContent = "Dates can't be in the future.";
     return;
   }
   const hit = sbiPdfOnOrBefore(picked);
@@ -818,10 +847,248 @@ async function loadSbi() {
   }
 }
 
+// --- Custom date-range picker ----------------------------------------------
+// Dependency-free dual-calendar range popover (strict CSP: no libraries). Writes
+// the chosen range into the hidden #from-date / #to-date inputs that onSubmit
+// reads, and shows "YYYY-MM-DD ~ YYYY-MM-DD" in the visible readonly box.
+const DR = { from: null, to: null, viewFrom: null, viewTo: null };
+const DR_MONTHS = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const DR_DOW = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
+
+const pad2 = (n) => String(n).padStart(2, "0");
+const isoOf = (y, m, d) => `${y}-${pad2(m + 1)}-${pad2(d)}`; // m is 0-based
+function parseIso(s) {
+  const [y, m, d] = s.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+const firstOfMonth = (iso) => {
+  const d = parseIso(iso);
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+};
+
+function drUpdateInput() {
+  const inp = el("daterange-input");
+  if (DR.from && DR.to) inp.value = `${DR.from} ~ ${DR.to}`;
+  else if (DR.from) inp.value = `${DR.from} ~ …`;
+  else inp.value = "";
+}
+
+// Commit the current from/to into the hidden inputs consumed by onSubmit.
+function drSyncInputs() {
+  el("from-date").value = DR.from || "";
+  el("to-date").value = DR.to || "";
+  drUpdateInput();
+}
+
+function drSetRange(from, to) {
+  DR.from = from;
+  DR.to = to;
+  drSyncInputs();
+}
+
+function drRenderCal(container, which) {
+  const view = which === "from" ? DR.viewFrom : DR.viewTo;
+  const y = view.getFullYear();
+  const m = view.getMonth();
+  const today = todayStr();
+  container.textContent = "";
+
+  const head = document.createElement("div");
+  head.className = "dr-cal-head";
+  head.textContent = which === "from" ? "From" : "To";
+  container.appendChild(head);
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "dr-title-row";
+  const mkNav = (label, step) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "dr-nav";
+    b.textContent = label;
+    b.dataset.nav = which;
+    b.dataset.step = String(step);
+    return b;
+  };
+  const navL = document.createElement("div");
+  navL.className = "dr-navs";
+  navL.appendChild(mkNav("«", -12));
+  navL.appendChild(mkNav("‹", -1));
+  const navR = document.createElement("div");
+  navR.className = "dr-navs";
+  navR.appendChild(mkNav("›", 1));
+  navR.appendChild(mkNav("»", 12));
+  const title = document.createElement("span");
+  title.textContent = `${DR_MONTHS[m]} ${y}`;
+  titleRow.appendChild(navL);
+  titleRow.appendChild(title);
+  titleRow.appendChild(navR);
+  container.appendChild(titleRow);
+
+  const grid = document.createElement("div");
+  grid.className = "dr-grid";
+  DR_DOW.forEach((d) => {
+    const c = document.createElement("div");
+    c.className = "dr-dow";
+    c.textContent = d;
+    grid.appendChild(c);
+  });
+
+  const startDow = new Date(y, m, 1).getDay();
+  for (let i = 0; i < 42; i++) {
+    const cell = new Date(y, m, i - startDow + 1); // JS normalises overflow
+    const inMonth = cell.getMonth() === m;
+    const iso = isoOf(cell.getFullYear(), cell.getMonth(), cell.getDate());
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "dr-day";
+    b.textContent = String(cell.getDate());
+    b.dataset.date = iso;
+    b.dataset.which = which;
+
+    let disabled = false;
+    if (!inMonth) {
+      b.classList.add("dr-muted");
+      disabled = true;
+    }
+    if (iso > today) disabled = true; // no future dates
+    if (which === "to" && DR.from && iso < DR.from) disabled = true;
+    if (disabled) b.disabled = true;
+
+    if (iso === DR.from || iso === DR.to) b.classList.add("dr-sel");
+    else if (DR.from && DR.to && iso > DR.from && iso < DR.to && inMonth)
+      b.classList.add("dr-in-range");
+
+    grid.appendChild(b);
+  }
+  container.appendChild(grid);
+}
+
+function drRender() {
+  drRenderCal(el("dr-cal-from"), "from");
+  drRenderCal(el("dr-cal-to"), "to");
+}
+
+function drOpen() {
+  const pop = el("daterange-pop");
+  if (!pop.hidden) return;
+  const base = DR.from ? firstOfMonth(DR.from) : firstOfMonth(todayStr());
+  DR.viewFrom = base;
+  DR.viewTo = DR.to ? firstOfMonth(DR.to) : base;
+  drRender();
+  pop.hidden = false;
+  el("daterange-input").setAttribute("aria-expanded", "true");
+}
+
+function drClose() {
+  const pop = el("daterange-pop");
+  if (pop.hidden) return;
+  pop.hidden = true;
+  el("daterange-input").setAttribute("aria-expanded", "false");
+}
+
+// Quick-pick chips: the current year + the 3 previous years. The current year
+// fills 1 Jan → today; past years fill the full 1 Jan – 31 Dec.
+function drRenderQuick() {
+  const wrap = el("dr-quick");
+  wrap.textContent = "";
+  const cur = new Date().getFullYear();
+  [cur, cur - 1, cur - 2, cur - 3].forEach((yv, idx) => {
+    if (idx > 0) {
+      const s = document.createElement("span");
+      s.className = "dr-sep";
+      s.textContent = "|";
+      wrap.appendChild(s);
+    }
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = String(yv);
+    b.dataset.year = String(yv);
+    wrap.appendChild(b);
+  });
+}
+
+function drApplyYear(yv) {
+  const from = `${yv}-01-01`;
+  const to = yv === new Date().getFullYear() ? todayStr() : `${yv}-12-31`;
+  drSetRange(from, to);
+  DR.viewFrom = firstOfMonth(from);
+  DR.viewTo = firstOfMonth(to);
+  drRender();
+}
+
+function setupDateRange() {
+  drRenderQuick();
+  const input = el("daterange-input");
+  const pop = el("daterange-pop");
+
+  const toggle = () => (pop.hidden ? drOpen() : drClose());
+  input.addEventListener("click", toggle);
+  input.addEventListener("keydown", (ev) => {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      toggle();
+    }
+  });
+
+  pop.addEventListener("click", (ev) => {
+    const t = ev.target;
+    if (t.dataset && t.dataset.year) {
+      drApplyYear(parseInt(t.dataset.year, 10));
+      drClose();
+      return;
+    }
+    if (t.dataset && t.dataset.nav) {
+      const which = t.dataset.nav;
+      const step = parseInt(t.dataset.step, 10);
+      const v = which === "from" ? DR.viewFrom : DR.viewTo;
+      const nv = new Date(v.getFullYear(), v.getMonth() + step, 1);
+      if (which === "from") DR.viewFrom = nv;
+      else DR.viewTo = nv;
+      drRender();
+      return;
+    }
+    if (t.classList.contains("dr-day") && !t.disabled) {
+      const iso = t.dataset.date;
+      if (t.dataset.which === "from") {
+        DR.from = iso;
+        if (DR.to && DR.from > DR.to) DR.to = null;
+        DR.viewFrom = firstOfMonth(iso);
+        if (!DR.to) DR.viewTo = firstOfMonth(iso);
+      } else {
+        if (DR.from && iso < DR.from) return;
+        DR.to = iso;
+        DR.viewTo = firstOfMonth(iso);
+      }
+      drSyncInputs();
+      drRender();
+    }
+  });
+
+  document.addEventListener("click", (ev) => {
+    if (pop.hidden) return;
+    if (!el("daterange").contains(ev.target)) drClose();
+  });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape") drClose();
+  });
+}
+
 function init() {
   populateCountries();
   populateQuickPick();
   setupAutocomplete();
+  setupDateRange();
+
+  // Cap the remaining native date pickers to today — no future dates.
+  const today = todayStr();
+  ["on-date", "sbi-date"].forEach((id) => {
+    const input = el(id);
+    if (input) input.max = today;
+  });
+
   el("lookup-form").addEventListener("submit", onSubmit);
   el("sbi-pdf-form").addEventListener("submit", onSbiPdfSubmit);
   el("feedback-form").addEventListener("submit", onFeedbackSubmit);
@@ -835,13 +1102,13 @@ function init() {
     if (ev.key === "Escape") closePdf();
   });
 
-  // Prefill a sensible default (Microsoft, previous calendar year) and run the
-  // lookup once SBI rate data is loaded so the INR conversion also shows.
+  // Prefill a sensible default (Microsoft, previous calendar year range) and run
+  // the lookup once SBI rate data is loaded so the INR conversion also shows.
   const prevYear = new Date().getFullYear() - 1;
   el("symbol").value = "MSFT";
   el("quick-pick").value = "MSFT";
   el("country").value = "US";
-  el("year").value = String(prevYear);
+  drSetRange(`${prevYear}-01-01`, `${prevYear}-12-31`);
   loadSbi().then(() => {
     el("lookup-form").requestSubmit();
   });

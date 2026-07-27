@@ -3,9 +3,11 @@
 A tiny, dependency-light website that helps with **Indian tax filing for foreign
 shares (RSU / ESPP)**. For any stock you get:
 
-- **Peak value** in a chosen calendar year (highest price that year)
-- **Year-end closing value** — price on 31 December, or the last trading day of
-  the year (for the current/incomplete year, the most recent trading day)
+- **Peak value** between any two dates you choose (highest price in that range).
+  A single **Date range** box opens a dual calendar (From / To) with one-click
+  year chips — the current year fills 1 Jan → today, past years fill 1 Jan – 31 Dec
+- **Closing value** — price on the range's end date, or the last trading day
+  on/before it
 - **Value on a specific date** you enter (nearest trading day on/before it)
 - The matching **SBI TT buying rate** for each of those dates, in the stock's
   currency, **hyperlinked to that day's official SBI PDF** for cross-verification

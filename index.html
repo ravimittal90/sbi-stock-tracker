@@ -26,7 +26,7 @@
     <header class="hero">
       <h1>SBI&nbsp;TT &amp; Stock Value Tracker</h1>
       <p class="tagline">
-        Peak, year-end and on-date share values with the matching
+        Peak, closing and on-date share values with the matching
         <abbr title="Telegraphic Transfer">SBI&nbsp;TT</abbr> buying rate — for
         Indian tax filing (RSU / ESPP / foreign shares).
       </p>
@@ -77,16 +77,35 @@
                 <select id="country"></select>
               </label>
 
-              <label class="field">
-                <span>Calendar year</span>
-                <input
-                  id="year"
-                  type="number"
-                  min="1990"
-                  max="2100"
-                  placeholder="e.g. 2024"
-                />
-              </label>
+              <div class="field daterange-field">
+                <span>Date range</span>
+                <div class="daterange" id="daterange">
+                  <input
+                    id="daterange-input"
+                    type="text"
+                    readonly
+                    autocomplete="off"
+                    placeholder="Click to pick a date range"
+                    aria-haspopup="dialog"
+                    aria-expanded="false"
+                  />
+                  <input id="from-date" type="hidden" />
+                  <input id="to-date" type="hidden" />
+                  <div
+                    id="daterange-pop"
+                    class="dr-pop"
+                    role="dialog"
+                    aria-label="Pick a date range"
+                    hidden
+                  >
+                    <div class="dr-quick" id="dr-quick"></div>
+                    <div class="dr-cals">
+                      <div class="dr-cal" id="dr-cal-from"></div>
+                      <div class="dr-cal" id="dr-cal-to"></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <label class="field">
                 <span>Specific date (optional)</span>

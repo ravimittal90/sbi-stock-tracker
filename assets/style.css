@@ -530,3 +530,144 @@ footer {
   border: none;
   background: #525659;
 }
+
+/* --- Custom date-range picker --------------------------------------------- */
+.daterange {
+  position: relative;
+}
+#daterange-input {
+  width: 100%;
+  cursor: pointer;
+}
+.dr-pop {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 40;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 16px 40px rgba(2, 6, 23, 0.2);
+  padding: 0.75rem;
+  width: max-content;
+  max-width: 92vw;
+}
+.dr-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.15rem 0.5rem;
+  padding: 0.1rem 0.25rem 0.6rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 0.6rem;
+}
+.dr-quick button {
+  border: none;
+  background: none;
+  padding: 0.2rem 0.4rem;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--accent);
+  cursor: pointer;
+  border-radius: 6px;
+}
+.dr-quick button:hover {
+  background: #eef2ff;
+}
+.dr-quick .dr-sep {
+  color: var(--line);
+  user-select: none;
+}
+.dr-cals {
+  display: flex;
+  gap: 1rem;
+}
+.dr-cal {
+  width: 15.5rem;
+}
+.dr-cal-head {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  text-align: center;
+  border-radius: 8px;
+  padding: 0.35rem 0.4rem;
+}
+.dr-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0.45rem 0 0.4rem;
+  color: var(--ink);
+  font-weight: 600;
+}
+.dr-navs {
+  display: flex;
+  gap: 0.1rem;
+}
+.dr-nav {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.dr-nav:hover {
+  background: #eef2ff;
+  color: var(--accent);
+}
+.dr-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  text-align: center;
+}
+.dr-dow {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--muted);
+  padding: 0.25rem 0;
+}
+.dr-day {
+  border: none;
+  background: none;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--ink);
+  aspect-ratio: 1 / 1;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.dr-day:hover:not(:disabled):not(.dr-muted) {
+  background: #eef2ff;
+}
+.dr-day.dr-muted {
+  color: #e2e8f0;
+  cursor: default;
+}
+.dr-day:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+.dr-day.dr-in-range {
+  background: #e0f2fe;
+  border-radius: 0;
+}
+.dr-day.dr-sel {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 700;
+  border-radius: 8px;
+}
+@media (max-width: 640px) {
+  .dr-cals {
+    flex-direction: column;
+  }
+  .dr-cal {
+    width: 100%;
+  }
+}
